@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { listIncidents, createIncident, getGraph } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import NewIncidentModal from "./NewIncidentModal";
 
 export default function Home() {
     const [incidents, setIncidents] = useState([]);
     const [graph, setGraph] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [creating, setCreating] = useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -22,14 +23,9 @@ export default function Home() {
             .catch((err) => { setError(err.message); setLoading(false); });
     }, []);
 
-    async function handleNewIncident() {
-        setCreating(true);
-        try {
-            await createIncident("API Gateway 500 Errors", "Investigating intermittent 500 errors during authentication.");
-            const data = await listIncidents();
-            setIncidents(data.incidents ?? []);
-        } catch (e) { setError(e.message); } finally { setCreating(false); }
-    }
+  function refreshIncidents() {
+    listIncidents().then((data) => setIncidents(data.incidents ?? [])).catch(() => {});
+}
 
     // ---- derive REAL insights from the graph ----
     const analysis = analyzeGraph(graph);
@@ -84,9 +80,9 @@ export default function Home() {
                     <span className="font-mono text-[11px] text-slate-400 uppercase tracking-[0.15em]">Overview</span>
                     <div className="flex items-center gap-4">
                         <div className="font-mono text-[11px] text-slate-400">{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
-                        <button onClick={handleNewIncident} disabled={creating}
-                            className="font-mono text-[12px] bg-gradient-to-r from-rose-400 to-purple-400 text-white px-4 py-2 rounded-md hover:from-rose-500 hover:to-purple-500 transition-all shadow-sm disabled:opacity-50 font-medium">
-                            {creating ? "creating…" : "+ new incident"}
+                      <button onClick={() => setModalOpen(true)}
+                            className="font-mono text-[12px] bg-gradient-to-r from-rose-400 to-purple-400 text-white px-4 py-2 rounded-md hover:from-rose-500 hover:to-purple-500 transition-all shadow-sm font-medium">
+                            + new incident
                         </button>
                     </div>
                 </header>
@@ -222,8 +218,15 @@ export default function Home() {
                         <span>backend: localhost:5000</span>
                         <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-rose-400" />connected</span>
                     </div>
-                </footer>
+               </footer>
             </div>
+
+            <NewIncidentModal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onCreated={refreshIncidents}
+                router={router}
+            />
         </div>
     );
 }

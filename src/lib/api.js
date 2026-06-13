@@ -47,3 +47,18 @@ export function getWebSocketUrl(incidentId) {
 export async function listIncidents() {
     return request("/incidents");
 }
+export async function uploadEvidence(incidentId, files) {
+    const formData = new FormData();
+    for (const file of files) {
+        formData.append("files", file);
+    }
+    const res = await fetch(`${BASE_URL}/incidents/${incidentId}/files`, {
+        method: "POST",
+        body: formData,
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Upload ${res.status}: ${text}`);
+    }
+    return res.json();
+}
