@@ -55,7 +55,7 @@ export default function Home() {
                 <nav className="flex-1 px-3 py-4 space-y-1">
                     <NavItem icon="◆" label="Overview" active />
                     <NavItem icon="▤" label="Incidents" badge={incidents.length} />
-                    <NavItem icon="◈" label="Topology" />
+                   <NavItem icon="◈" label="Topology" onClick={() => router.push("/topology")} />
                     <NavItem icon="▰" label="Runbooks" />
                     <NavItem icon="◷" label="History" />
                     <div className="pt-4 mt-4 border-t border-[#f3eef3]">
@@ -276,9 +276,10 @@ function GlassStat({ value, label }) {
         </div>
     );
 }
-function NavItem({ icon, label, active, badge }) {
+function NavItem({ icon, label, active, badge, onClick }) {
     return (
-        <a className={`flex items-center gap-3 px-3 py-2 rounded-md font-mono text-[13px] cursor-pointer transition-colors ${active ? "bg-rose-50/80 text-purple-600 font-medium shadow-sm" : "text-slate-400 hover:bg-rose-50/40 hover:text-slate-600"}`}>
+        <a onClick={onClick}
+            className={`flex items-center gap-3 px-3 py-2 rounded-md font-mono text-[13px] cursor-pointer transition-colors ${active ? "bg-rose-50/80 text-purple-600 font-medium shadow-sm" : "text-slate-400 hover:bg-rose-50/40 hover:text-slate-600"}`}>
             <span className="text-[11px] w-4">{icon}</span><span>{label}</span>
             {badge != null && <span className="ml-auto font-mono text-[10px] text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded-full">{badge}</span>}
         </a>
