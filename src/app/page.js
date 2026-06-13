@@ -34,8 +34,14 @@ export default function Home() {
     // ---- derive REAL insights from the graph ----
     const analysis = analyzeGraph(graph);
 
-    const trend = [3,5,2,8,4,6,3,7,5,9,4,6,8,5,3,7,4,6,5,8,6,4,7,5,3,6,8,4,5,7];
+    // real severity split from analyzed incidents
+    const analyzed = incidents.filter(i => i.severity === "SEV-1" || i.severity === "SEV-2");
+    const sev1Count = analyzed.filter(i => i.severity === "SEV-1").length;
+    const sev1Pct = analyzed.length ? Math.round((sev1Count / analyzed.length) * 100) : 0;
+    const sev2Pct = analyzed.length ? 100 - sev1Pct : 0;
 
+    // real 30-day volume: count incidents per day for the last 30 days
+    const trend = buildVolume(incidents);
     return (
         <div className="min-h-screen bg-[#fdfcfd] text-[#3a3a44] flex relative selection:bg-rose-100 selection:text-rose-700 overflow-x-hidden">
 
@@ -126,21 +132,25 @@ export default function Home() {
                         </Panel>
 
                         <Panel title="severity split">
-                            <div className="space-y-3 mt-3">
-                                <SeverityBar label="SEV-1" pct={38} tone="rose" />
-                                <SeverityBar label="SEV-2" pct={62} tone="purple" />
+                           <div className="space-y-3 mt-3">
+                                <SeverityBar label="SEV-1" pct={sev1Pct} tone="rose" />
+                                <SeverityBar label="SEV-2" pct={sev2Pct} tone="purple" />
                             </div>
                             <div className="mt-4 pt-4 border-t border-[#f3eef3] font-mono text-[11px] text-slate-400">
-                                derived from incident reports
+                                {analyzed.length} analyzed incidents
                             </div>
                         </Panel>
 
                         <Panel title="30-day volume">
                             <div className="flex items-end gap-[3px] h-24 mt-2 group/chart">
-                                {trend.map((h, i) => (
-                                    <div key={i} className="flex-1 rounded-t-[3px] transition-all duration-300 origin-bottom hover:!opacity-100 group-hover/chart:opacity-40 hover:scale-y-105"
-                                        style={{ height: `${h * 10}%`, background: h > 7 ? "linear-gradient(to top, #f43f5e, #c084fc)" : "linear-gradient(to top, #ffe4e6, #f3e8ff)" }} />
-                                ))}
+                            {(() => {
+                                    const max = Math.max(...trend, 1);
+                                    return trend.map((h, i) => (
+                                        <div key={i} className="flex-1 rounded-t-[3px] transition-all duration-300 origin-bottom hover:!opacity-100 group-hover/chart:opacity-40 hover:scale-y-105"
+                                            style={{ height: `${Math.max((h / max) * 100, h > 0 ? 8 : 2)}%`, background: h >= max * 0.7 ? "linear-gradient(to top, #f43f5e, #c084fc)" : "linear-gradient(to top, #ffe4e6, #f3e8ff)" }} />
+                                    ));
+                                })()}
+                            
                             </div>
                         </Panel>
                     </div>
@@ -156,22 +166,52 @@ export default function Home() {
 
                     {!loading && !error && (
                         <div className="rounded-lg border border-[#f3eef3] overflow-hidden divide-y divide-[#f3eef3] bg-white/40 backdrop-blur-sm">
-                            {incidents.slice(0, 14).map((incident, idx) => {
-                                const isSev1 = idx % 2 === 0;
-                                return (
-                                    <div key={incident.id} onClick={() => router.push(`/incidents/${incident.id}`)} className="group grid grid-cols-12 items-center gap-4 py-3.5 px-4 bg-white/40 hover:bg-white hover:shadow-[0_4px_20px_-4px_rgba(244,63,94,0.08)] transition-all duration-200 cursor-pointer first:rounded-t-lg last:rounded-b-lg">
-                                        <span className="col-span-1">
-                                            <span className={`font-mono text-[10px] font-medium px-1.5 py-0.5 rounded ring-1 ${isSev1 ? "bg-rose-50 text-rose-500 ring-rose-100 group-hover:bg-rose-100/70" : "bg-purple-50 text-purple-500 ring-purple-100 group-hover:bg-purple-100/70"} transition-colors`}>
-                                                {isSev1 ? "SEV-1" : "SEV-2"}
-                                            </span>
-                                        </span>
-                                        <span className="col-span-5 text-sm font-medium truncate text-slate-700">{incident.title}</span>
-                                        <span className="col-span-3 font-mono text-[11px] text-slate-400 truncate">{analysis.cascadeLabel}</span>
-                                        <span className="col-span-2 font-mono text-[11px] text-slate-300">{new Date(incident.createdAt).toLocaleDateString()}</span>
-                                        <span className="col-span-1 text-right font-mono text-slate-300 group-hover:text-purple-400 group-hover:translate-x-1 transition-all duration-200">→</span>
-                                    </div>
-                                );
-                            })}
+                            {incidents.slice(0, 14).map((incident) => {
+    // normalize confidence: some reports use 0-1, most use 0-100
+    let conf = incident.confidence;
+    if (conf != null && conf <= 1) conf = Math.round(conf * 100);
+
+    const sev = incident.severity;
+    const isSev1 = sev === "SEV-1";
+    const isSev2 = sev === "SEV-2";
+    const hasReport = incident.reportStatus === "completed" && (isSev1 || isSev2);
+    const failed = incident.reportStatus === "failed";
+    const noReport = incident.reportStatus === "no-report";
+
+    return (
+        <div key={incident.id}
+            onClick={() => router.push(`/incidents/${incident.id}`)}
+            className="group grid grid-cols-12 items-center gap-4 py-3.5 px-4 bg-white/40 hover:bg-white hover:shadow-[0_4px_20px_-4px_rgba(244,63,94,0.08)] transition-all duration-200 cursor-pointer first:rounded-t-lg last:rounded-b-lg">
+
+            {/* severity / status badge — REAL now */}
+            <span className="col-span-1">
+                {hasReport ? (
+                    <span className={`font-mono text-[10px] font-medium px-1.5 py-0.5 rounded ring-1 ${isSev1 ? "bg-rose-50 text-rose-500 ring-rose-100" : "bg-purple-50 text-purple-500 ring-purple-100"}`}>{sev}</span>
+                ) : failed ? (
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-slate-50 text-slate-400 ring-slate-100">failed</span>
+                ) : noReport ? (
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-slate-50 text-slate-300 ring-slate-100">—</span>
+                ) : (
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-amber-50 text-amber-500 ring-amber-100">{incident.reportStatus}</span>
+                )}
+            </span>
+
+            <span className="col-span-5 text-sm font-medium truncate text-slate-700">{incident.title}</span>
+
+            {/* primary component — REAL */}
+            <span className="col-span-3 font-mono text-[11px] text-slate-400 truncate">
+                {incident.primaryComponent && !incident.primaryComponent.startsWith("N/A") ? incident.primaryComponent : "—"}
+            </span>
+
+            {/* confidence — REAL, normalized */}
+            <span className="col-span-2 font-mono text-[11px] text-slate-300">
+                {conf != null && conf > 0 ? `${conf}% conf` : new Date(incident.createdAt).toLocaleDateString()}
+            </span>
+
+            <span className="col-span-1 text-right font-mono text-slate-300 group-hover:text-purple-400 group-hover:translate-x-1 transition-all duration-200">→</span>
+        </div>
+    );
+})}
                         </div>
                     )}
                 </main>
@@ -272,4 +312,20 @@ function SeverityBar({ label, pct, tone }) {
             </div>
         </div>
     );
+}
+function buildVolume(incidents) {
+    // last 30 days, count incidents created each day
+    const days = 30;
+    const buckets = new Array(days).fill(0);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    for (const inc of incidents) {
+        const d = new Date(inc.createdAt);
+        d.setHours(0, 0, 0, 0);
+        const daysAgo = Math.floor((now - d) / 86400000);
+        if (daysAgo >= 0 && daysAgo < days) {
+            buckets[days - 1 - daysAgo] += 1; // oldest left, newest right
+        }
+    }
+    return buckets;
 }
