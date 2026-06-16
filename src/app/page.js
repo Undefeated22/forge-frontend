@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listIncidents, createIncident, getGraph } from "@/lib/api";
+import { listIncidents, createIncident, getGraph, logout } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import NewIncidentModal from "./NewIncidentModal";
+import AuthGuard from "./AuthGuard";
 
 export default function Home() {
+    return (
+        <AuthGuard>
+            <Dashboard />
+        </AuthGuard>
+    );
+}
+
+function Dashboard() {
     const [incidents, setIncidents] = useState([]);
     const [graph, setGraph] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -23,9 +32,14 @@ export default function Home() {
             .catch((err) => { setError(err.message); setLoading(false); });
     }, []);
 
-  function refreshIncidents() {
-    listIncidents().then((data) => setIncidents(data.incidents ?? [])).catch(() => {});
-}
+    function refreshIncidents() {
+        listIncidents().then((data) => setIncidents(data.incidents ?? [])).catch(() => {});
+    }
+
+    async function handleLogout() {
+        await logout().catch(() => {});
+        router.push("/login");
+    }
 
     // ---- derive REAL insights from the graph ----
     const analysis = analyzeGraph(graph);
@@ -38,6 +52,7 @@ export default function Home() {
 
     // real 30-day volume: count incidents per day for the last 30 days
     const trend = buildVolume(incidents);
+
     return (
         <div className="min-h-screen bg-[#fdfcfd] text-[#3a3a44] flex relative selection:bg-rose-100 selection:text-rose-700 overflow-x-hidden">
 
@@ -55,7 +70,7 @@ export default function Home() {
                 <nav className="flex-1 px-3 py-4 space-y-1">
                     <NavItem icon="◆" label="Overview" active />
                     <NavItem icon="▤" label="Incidents" badge={incidents.length} />
-                   <NavItem icon="◈" label="Topology" onClick={() => router.push("/topology")} />
+                    <NavItem icon="◈" label="Topology" onClick={() => router.push("/topology")} />
                     <NavItem icon="▰" label="Runbooks" />
                     <NavItem icon="◷" label="History" />
                     <div className="pt-4 mt-4 border-t border-[#f3eef3]">
@@ -70,7 +85,11 @@ export default function Home() {
                         </span>
                         <span className="font-mono text-[10px] text-rose-500/80 uppercase tracking-wider">all systems live</span>
                     </div>
-                    <div className="font-mono text-[10px] text-slate-300">{analysis.componentCount} components monitored</div>
+                    <div className="font-mono text-[10px] text-slate-300 mb-3">{analysis.componentCount} components monitored</div>
+                    <button onClick={handleLogout}
+                        className="w-full font-mono text-[11px] text-slate-400 hover:text-rose-500 border border-[#f3eef3] hover:border-rose-200 rounded-md py-1.5 transition">
+                        sign out
+                    </button>
                 </div>
             </aside>
 
@@ -80,7 +99,7 @@ export default function Home() {
                     <span className="font-mono text-[11px] text-slate-400 uppercase tracking-[0.15em]">Overview</span>
                     <div className="flex items-center gap-4">
                         <div className="font-mono text-[11px] text-slate-400">{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
-                      <button onClick={() => setModalOpen(true)}
+                        <button onClick={() => setModalOpen(true)}
                             className="font-mono text-[12px] bg-gradient-to-r from-rose-400 to-purple-400 text-white px-4 py-2 rounded-md hover:from-rose-500 hover:to-purple-500 transition-all shadow-sm font-medium">
                             + new incident
                         </button>
@@ -128,7 +147,7 @@ export default function Home() {
                         </Panel>
 
                         <Panel title="severity split">
-                           <div className="space-y-3 mt-3">
+                            <div className="space-y-3 mt-3">
                                 <SeverityBar label="SEV-1" pct={sev1Pct} tone="rose" />
                                 <SeverityBar label="SEV-2" pct={sev2Pct} tone="purple" />
                             </div>
@@ -139,14 +158,13 @@ export default function Home() {
 
                         <Panel title="30-day volume">
                             <div className="flex items-end gap-[3px] h-24 mt-2 group/chart">
-                            {(() => {
+                                {(() => {
                                     const max = Math.max(...trend, 1);
                                     return trend.map((h, i) => (
                                         <div key={i} className="flex-1 rounded-t-[3px] transition-all duration-300 origin-bottom hover:!opacity-100 group-hover/chart:opacity-40 hover:scale-y-105"
                                             style={{ height: `${Math.max((h / max) * 100, h > 0 ? 8 : 2)}%`, background: h >= max * 0.7 ? "linear-gradient(to top, #f43f5e, #c084fc)" : "linear-gradient(to top, #ffe4e6, #f3e8ff)" }} />
                                     ));
                                 })()}
-                            
                             </div>
                         </Panel>
                     </div>
@@ -163,51 +181,48 @@ export default function Home() {
                     {!loading && !error && (
                         <div className="rounded-lg border border-[#f3eef3] overflow-hidden divide-y divide-[#f3eef3] bg-white/40 backdrop-blur-sm">
                             {incidents.slice(0, 14).map((incident) => {
-    // normalize confidence: some reports use 0-1, most use 0-100
-    let conf = incident.confidence;
-    if (conf != null && conf <= 1) conf = Math.round(conf * 100);
+                                // normalize confidence: some reports use 0-1, most use 0-100
+                                let conf = incident.confidence;
+                                if (conf != null && conf <= 1) conf = Math.round(conf * 100);
 
-    const sev = incident.severity;
-    const isSev1 = sev === "SEV-1";
-    const isSev2 = sev === "SEV-2";
-    const hasReport = incident.reportStatus === "completed" && (isSev1 || isSev2);
-    const failed = incident.reportStatus === "failed";
-    const noReport = incident.reportStatus === "no-report";
+                                const sev = incident.severity;
+                                const isSev1 = sev === "SEV-1";
+                                const isSev2 = sev === "SEV-2";
+                                const hasReport = incident.reportStatus === "completed" && (isSev1 || isSev2);
+                                const failed = incident.reportStatus === "failed";
+                                const noReport = incident.reportStatus === "no-report";
 
-    return (
-        <div key={incident.id}
-            onClick={() => router.push(`/incidents/${incident.id}`)}
-            className="group grid grid-cols-12 items-center gap-4 py-3.5 px-4 bg-white/40 hover:bg-white hover:shadow-[0_4px_20px_-4px_rgba(244,63,94,0.08)] transition-all duration-200 cursor-pointer first:rounded-t-lg last:rounded-b-lg">
+                                return (
+                                    <div key={incident.id}
+                                        onClick={() => router.push(`/incidents/${incident.id}`)}
+                                        className="group grid grid-cols-12 items-center gap-4 py-3.5 px-4 bg-white/40 hover:bg-white hover:shadow-[0_4px_20px_-4px_rgba(244,63,94,0.08)] transition-all duration-200 cursor-pointer first:rounded-t-lg last:rounded-b-lg">
 
-            {/* severity / status badge — REAL now */}
-            <span className="col-span-1">
-                {hasReport ? (
-                    <span className={`font-mono text-[10px] font-medium px-1.5 py-0.5 rounded ring-1 ${isSev1 ? "bg-rose-50 text-rose-500 ring-rose-100" : "bg-purple-50 text-purple-500 ring-purple-100"}`}>{sev}</span>
-                ) : failed ? (
-                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-slate-50 text-slate-400 ring-slate-100">failed</span>
-                ) : noReport ? (
-                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-slate-50 text-slate-300 ring-slate-100">—</span>
-                ) : (
-                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-amber-50 text-amber-500 ring-amber-100">{incident.reportStatus}</span>
-                )}
-            </span>
+                                        <span className="col-span-1">
+                                            {hasReport ? (
+                                                <span className={`font-mono text-[10px] font-medium px-1.5 py-0.5 rounded ring-1 ${isSev1 ? "bg-rose-50 text-rose-500 ring-rose-100" : "bg-purple-50 text-purple-500 ring-purple-100"}`}>{sev}</span>
+                                            ) : failed ? (
+                                                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-slate-50 text-slate-400 ring-slate-100">failed</span>
+                                            ) : noReport ? (
+                                                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-slate-50 text-slate-300 ring-slate-100">—</span>
+                                            ) : (
+                                                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded ring-1 bg-amber-50 text-amber-500 ring-amber-100">{incident.reportStatus}</span>
+                                            )}
+                                        </span>
 
-            <span className="col-span-5 text-sm font-medium truncate text-slate-700">{incident.title}</span>
+                                        <span className="col-span-5 text-sm font-medium truncate text-slate-700">{incident.title}</span>
 
-            {/* primary component — REAL */}
-            <span className="col-span-3 font-mono text-[11px] text-slate-400 truncate">
-                {incident.primaryComponent && !incident.primaryComponent.startsWith("N/A") ? incident.primaryComponent : "—"}
-            </span>
+                                        <span className="col-span-3 font-mono text-[11px] text-slate-400 truncate">
+                                            {incident.primaryComponent && !incident.primaryComponent.startsWith("N/A") ? incident.primaryComponent : "—"}
+                                        </span>
 
-            {/* confidence — REAL, normalized */}
-            <span className="col-span-2 font-mono text-[11px] text-slate-300">
-                {conf != null && conf > 0 ? `${conf}% conf` : new Date(incident.createdAt).toLocaleDateString()}
-            </span>
+                                        <span className="col-span-2 font-mono text-[11px] text-slate-300">
+                                            {conf != null && conf > 0 ? `${conf}% conf` : new Date(incident.createdAt).toLocaleDateString()}
+                                        </span>
 
-            <span className="col-span-1 text-right font-mono text-slate-300 group-hover:text-purple-400 group-hover:translate-x-1 transition-all duration-200">→</span>
-        </div>
-    );
-})}
+                                        <span className="col-span-1 text-right font-mono text-slate-300 group-hover:text-purple-400 group-hover:translate-x-1 transition-all duration-200">→</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </main>
@@ -218,7 +233,7 @@ export default function Home() {
                         <span>backend: localhost:5000</span>
                         <span className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-rose-400" />connected</span>
                     </div>
-               </footer>
+                </footer>
             </div>
 
             <NewIncidentModal
@@ -237,14 +252,12 @@ function analyzeGraph(graph) {
     if (!graph?.nodes?.length) return fallback;
 
     const nodeById = Object.fromEntries(graph.nodes.map(n => [n.id, n]));
-    // sum outgoing occurrence weight per node
     const outWeight = {};
     const outEdges = {};
     for (const e of graph.edges ?? []) {
         outWeight[e.fromNodeId] = (outWeight[e.fromNodeId] ?? 0) + e.occurrenceCount;
         (outEdges[e.fromNodeId] ??= []).push(e);
     }
-    // pick the node with the highest total outgoing weight = true weakest link
     const rootId = Object.keys(outWeight).sort((a, b) => outWeight[b] - outWeight[a])[0];
     if (!rootId) return { ...fallback, componentCount: graph.nodes.length };
 
@@ -318,7 +331,6 @@ function SeverityBar({ label, pct, tone }) {
     );
 }
 function buildVolume(incidents) {
-    // last 30 days, count incidents created each day
     const days = 30;
     const buckets = new Array(days).fill(0);
     const now = new Date();
@@ -328,7 +340,7 @@ function buildVolume(incidents) {
         d.setHours(0, 0, 0, 0);
         const daysAgo = Math.floor((now - d) / 86400000);
         if (daysAgo >= 0 && daysAgo < days) {
-            buckets[days - 1 - daysAgo] += 1; // oldest left, newest right
+            buckets[days - 1 - daysAgo] += 1;
         }
     }
     return buckets;
