@@ -34,8 +34,8 @@ function Incidents() {
             const isAnalyzed = inc.severity === "SEV-1" || inc.severity === "SEV-2";
             const matchesSev =
                 sevFilter === "all" ? true :
-                sevFilter === "unanalyzed" ? !isAnalyzed :
-                inc.severity === sevFilter;
+                    sevFilter === "unanalyzed" ? !isAnalyzed :
+                        inc.severity === sevFilter;
             return matchesSearch && matchesSev;
         });
     }, [incidents, search, sevFilter]);
@@ -65,8 +65,8 @@ function Incidents() {
                     <SideLink icon="◆" label="Overview" onClick={() => router.push("/")} />
                     <SideLink icon="▤" label="Incidents" active badge={incidents.length} />
                     <SideLink icon="◈" label="Topology" onClick={() => router.push("/topology")} />
-                    <SideLink icon="▰" label="Runbooks" soon />
-                    <SideLink icon="◷" label="History" soon />
+                    <SideLink icon="▰" label="Runbooks" onClick={() => router.push("/runbooks")} />
+                    <SideLink icon="◷" label="History" onClick={() => router.push("/history")} />
                 </nav>
             </motion.aside>
 
@@ -96,7 +96,7 @@ function Incidents() {
                         <FilterPill label="Unanalyzed" count={counts.unanalyzed} active={sevFilter === "unanalyzed"} onClick={() => setSevFilter("unanalyzed")} />
                     </div>
 
-                    {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-white/40 rounded-2xl animate-pulse" />)}</div>}
+                    {loading && <div className="space-y-2">{[1, 2, 3, 4, 5].map(i => <div key={i} className="h-14 bg-white/40 rounded-2xl animate-pulse" />)}</div>}
                     {error && <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 text-sm text-rose-500 font-mono">backend unreachable — {error}</div>}
 
                     {!loading && !error && (
@@ -150,7 +150,7 @@ function Incidents() {
 function FilterPill({ label, count, active, onClick, tone }) {
     const activeColor = tone === "rose" ? "bg-rose-400 text-white shadow-rose-300/40"
         : tone === "purple" ? "bg-purple-400 text-white shadow-purple-300/40"
-        : "bg-slate-700 text-white shadow-slate-300/40";
+            : "bg-slate-700 text-white shadow-slate-300/40";
     return (
         <motion.button whileHover={{ scale: 1.05, y: -1 }} whileTap={{ scale: 0.95 }} transition={spring} onClick={onClick}
             className={`font-mono text-[11px] px-3.5 py-1.5 rounded-xl border transition-colors ${active ? `${activeColor} border-transparent shadow-lg` : "bg-white/60 border-white/70 text-slate-500 hover:bg-white/80"}`}>

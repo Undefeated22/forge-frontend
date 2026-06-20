@@ -339,7 +339,7 @@ export default function TopologyPage() {
                     <SideLink icon="▤" label="Incidents" onClick={() => router.push("/incidents")} />
                     <SideLink icon="◈" label="Topology" active />
                     <SideLink icon="▰" label="Runbooks" onClick={() => router.push("/runbooks")} />
-                    <SideLink icon="◷" label="History" soon />
+                    <SideLink icon="◷" label="History" onClick={() => router.push("/history")} />
                 </nav>
             </motion.aside>
             <ReactFlowProvider><TopologyCanvas /></ReactFlowProvider>

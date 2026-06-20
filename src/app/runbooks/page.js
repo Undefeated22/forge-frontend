@@ -74,7 +74,7 @@ function Runbooks() {
                     <SideLink icon="▤" label="Incidents" onClick={() => router.push("/incidents")} />
                     <SideLink icon="◈" label="Topology" onClick={() => router.push("/topology")} />
                     <SideLink icon="▰" label="Runbooks" active />
-                    <SideLink icon="◷" label="History" soon />
+                    <SideLink icon="◷" label="History" onClick={() => router.push("/history")} />
                 </nav>
             </motion.aside>
 
@@ -115,7 +115,7 @@ function Runbooks() {
                         <p className="font-mono text-[11px] text-slate-400 mb-5">Top 20 highest-scored mitigation steps Forge has generated — your proven plays.</p>
                     )}
 
-                    {loading && <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-20 bg-white/40 rounded-2xl animate-pulse" />)}</div>}
+                    {loading && <div className="space-y-2">{[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-white/40 rounded-2xl animate-pulse" />)}</div>}
                     {error && <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 text-sm text-rose-500 font-mono">backend unreachable — {error}</div>}
 
                     {!loading && !error && filtered.length === 0 && (

@@ -31,8 +31,8 @@ function Dashboard() {
             .catch((err) => { setError(err.message); setLoading(false); });
     }, []);
 
-    function refreshIncidents() { listIncidents().then((data) => setIncidents(data.incidents ?? [])).catch(() => {}); }
-    async function handleLogout() { await logout().catch(() => {}); router.push("/login"); }
+    function refreshIncidents() { listIncidents().then((data) => setIncidents(data.incidents ?? [])).catch(() => { }); }
+    async function handleLogout() { await logout().catch(() => { }); router.push("/login"); }
 
     const analysis = analyzeGraph(graph);
     const analyzed = incidents.filter(i => i.severity === "SEV-1" || i.severity === "SEV-2");
@@ -61,10 +61,10 @@ function Dashboard() {
                 </div>
                 <motion.nav variants={container} initial="hidden" animate="show" className="flex-1 px-3 py-4 space-y-1.5">
                     <NavItem icon="◆" label="Overview" active />
-<NavItem icon="▤" label="Incidents" badge={incidents.length} onClick={() => router.push("/incidents")} />
-<NavItem icon="◈" label="Topology" onClick={() => router.push("/topology")} />
-<NavItem icon="▰" label="Runbooks" onClick={() => router.push("/runbooks")} />
-<NavItem icon="◷" label="History" soon />
+                    <NavItem icon="▤" label="Incidents" badge={incidents.length} onClick={() => router.push("/incidents")} />
+                    <NavItem icon="◈" label="Topology" onClick={() => router.push("/topology")} />
+                    <NavItem icon="▰" label="Runbooks" onClick={() => router.push("/runbooks")} />
+                    <NavItem icon="◷" label="History" onClick={() => router.push("/history")} />
                 </motion.nav>
                 <div className="px-4 py-4">
                     <div className="rounded-2xl bg-white/70 border border-white/60 p-3 shadow-lg shadow-purple-200/20">
@@ -163,7 +163,7 @@ function Dashboard() {
                             <span className="font-mono text-[10px] text-slate-300">{incidents.length} records</span>
                         </motion.div>
 
-                        {loading && <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-12 bg-white/40 rounded-2xl animate-pulse" />)}</div>}
+                        {loading && <div className="space-y-2">{[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-white/40 rounded-2xl animate-pulse" />)}</div>}
                         {error && <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 text-sm text-rose-500 font-mono">backend unreachable — {error}</div>}
 
                         {!loading && !error && (
