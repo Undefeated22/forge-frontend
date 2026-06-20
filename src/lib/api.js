@@ -1,7 +1,7 @@
 // Central place for all calls to the Forge backend.
 // Change BASE_URL in one spot if the backend moves.
 
-const BASE_URL = "http://localhost:5000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 // Generic fetch wrapper with error handling.
 // credentials:"include" makes the httpOnly auth cookie travel with every request.
@@ -90,7 +90,9 @@ export async function getGraph() {
 
 // The WebSocket URL builder for live updates
 export function getWebSocketUrl(incidentId) {
-    return `ws://localhost:5000/ws/incidents/${incidentId}`;
+    const wsBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000")
+        .replace(/^http/, "ws");
+    return `${wsBase}/ws/incidents/${incidentId}`;
 }
 export async function forgotPassword(email) {
     return request("/auth/forgot-password", {
@@ -104,4 +106,7 @@ export async function resetPassword(token, password) {
         method: "POST",
         body: JSON.stringify({ token, password })
     });
+}
+export async function getRunbooks() {
+    return request("/runbooks");
 }
