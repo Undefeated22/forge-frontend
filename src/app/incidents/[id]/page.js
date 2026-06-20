@@ -53,15 +53,14 @@ export default function IncidentDetail() {
     return (
         <div className="min-h-screen bg-[#f4f1f6] text-[#2a2730] relative selection:bg-rose-200/60">
             <div className="pointer-events-none fixed -top-20 left-1/4 h-[600px] w-[600px] rounded-full bg-rose-300/30 blur-[170px]" />
-            <div className="pointer-events-none fixed bottom-12 right-12 h-[500px] w-[500px] rounded-full bg-purple-300/25 blur-[160px]" />
+            <div className="pointer-events-none fixed bottom-0 right-1/4 h-[500px] w-[500px] rounded-full bg-purple-300/25 blur-[160px]" />
 
             <div className="relative z-10 max-w-4xl mx-auto px-8 py-8">
 
                 <motion.button initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={spring}
-                    onClick={() => router.push("/")}
-                    whileHover={{ x: -3 }}
+                    whileHover={{ x: -4 }} onClick={() => router.push("/incidents")}
                     className="font-mono text-[12px] text-slate-400 hover:text-purple-500 transition-colors mb-6 flex items-center gap-2">
-                    ← back to overview
+                    ← back to incidents
                 </motion.button>
 
                 {loading && <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-24 bg-white/40 rounded-2xl animate-pulse" />)}</div>}
@@ -74,9 +73,9 @@ export default function IncidentDetail() {
 
                 {noReport && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={spring}
-                        className="rounded-3xl border border-white/60 bg-white/50 backdrop-blur-2xl shadow-[0_25px_60px_-25px_rgba(200,100,180,0.4)] p-10 text-center">
-                        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-rose-200 to-purple-200 flex items-center justify-center mx-auto mb-4">
-                            <span className="text-white text-xl">◷</span>
+                        className="rounded-3xl border border-white/60 bg-white/50 backdrop-blur-xl shadow-[0_25px_60px_-25px_rgba(200,100,180,0.4)] p-12 text-center">
+                        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-200 to-rose-200 flex items-center justify-center mx-auto mb-4">
+                            <span className="text-white text-2xl">◷</span>
                         </div>
                         <div className="text-xl font-semibold text-slate-800 mb-1">No analysis yet</div>
                         <p className="font-mono text-[12px] text-slate-400 max-w-sm mx-auto leading-relaxed">
@@ -89,7 +88,7 @@ export default function IncidentDetail() {
                 {!loading && !error && !noReport && (
                     <>
                         {/* HEADER */}
-                        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={spring}
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={spring}
                             className="flex items-start justify-between mb-6">
                             <div>
                                 <div className="flex items-center gap-3 mb-2">
@@ -103,8 +102,7 @@ export default function IncidentDetail() {
                                 </h1>
                             </div>
                             {ai?.confidenceMatrix?.overallScore != null && (
-                                <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ ...spring, delay: 0.15 }}
-                                    className="text-right">
+                                <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ ...spring, delay: 0.15 }} className="text-right">
                                     <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-rose-400 to-purple-500 tabular-nums">{ai.confidenceMatrix.overallScore}</div>
                                     <div className="font-mono text-[10px] uppercase tracking-wider text-slate-400">confidence</div>
                                 </motion.div>
@@ -116,7 +114,7 @@ export default function IncidentDetail() {
                         )}
 
                         {isProcessing && !ai && (
-                            <div className="rounded-3xl border border-white/60 bg-white/50 backdrop-blur-2xl p-8 text-center">
+                            <div className="rounded-3xl border border-white/60 bg-white/50 backdrop-blur-xl p-8 text-center shadow-lg">
                                 <div className="font-mono text-sm text-slate-400">Analysis in progress — live updates streaming…</div>
                             </div>
                         )}
@@ -147,9 +145,9 @@ export default function IncidentDetail() {
 
                                 {/* historical correlation — THE MOAT */}
                                 {fp?.historicalCorrelation && !fp.historicalCorrelation.startsWith("First occurrence") && (
-                                    <motion.div variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: spring } }}
-                                        className="rounded-3xl border border-purple-200/60 bg-gradient-to-r from-purple-100/50 to-rose-100/40 backdrop-blur-xl p-5 shadow-[0_15px_40px_-20px_rgba(200,100,180,0.4)]">
-                                        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-purple-500 mb-2">⟳ recurring pattern detected</div>
+                                    <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: spring } }}
+                                        className="rounded-3xl border border-purple-200/70 bg-gradient-to-r from-purple-100/50 to-rose-100/40 backdrop-blur-xl p-5 shadow-[0_15px_40px_-20px_rgba(200,100,180,0.35)]">
+                                        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-purple-400 mb-2">⟳ recurring pattern detected</div>
                                         <p className="text-sm text-slate-600 leading-relaxed">{fp.historicalCorrelation}</p>
                                     </motion.div>
                                 )}
@@ -159,16 +157,15 @@ export default function IncidentDetail() {
                                         <div className="space-y-3">
                                             {scored.scoredSteps.map((step, i) => (
                                                 <motion.div key={i}
-                                                    initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: 0.05 * i }}
-                                                    whileHover={{ scale: 1.01 }}
+                                                    initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: i * 0.05 }}
                                                     className="rounded-2xl border border-white/60 p-4 bg-white/60">
                                                     <div className="flex items-center gap-3 mb-1.5">
-                                                        <span className={`font-mono text-[11px] font-medium h-6 w-6 rounded-lg flex items-center justify-center ${i === 0 ? "bg-gradient-to-br from-rose-200 to-purple-200 text-purple-700" : "bg-white/70 text-slate-400"}`}>{step.rank}</span>
+                                                        <span className={`font-mono text-[11px] font-medium h-6 w-6 rounded-lg flex items-center justify-center ${i === 0 ? "bg-gradient-to-br from-rose-200 to-purple-200 text-purple-700" : "bg-slate-100 text-slate-400"}`}>{step.rank}</span>
                                                         <span className="text-sm font-medium text-slate-700 flex-1">{step.action}</span>
                                                         <span className="font-mono text-[11px] text-slate-400">score {step.compositeScore}</span>
                                                     </div>
                                                     {step.cliCommand && step.cliCommand !== "N/A" && (
-                                                        <div className="font-mono text-[11px] bg-white/70 border border-white/70 rounded-lg px-3 py-1.5 text-purple-600 mt-2 overflow-x-auto">{step.cliCommand}</div>
+                                                        <div className="font-mono text-[11px] bg-white/70 border border-white/70 rounded-lg px-2.5 py-1.5 text-purple-600 mt-2 overflow-x-auto">{step.cliCommand}</div>
                                                     )}
                                                     <div className="flex gap-3 mt-2 font-mono text-[10px] text-slate-400">
                                                         <span>recovery {step.recoveryTimeMinutes}m</span>
@@ -198,8 +195,8 @@ function Pipeline({ events, status }) {
     const seen = new Set(events.map(e => e.type));
     const done = status === "completed";
     return (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}
-            className="rounded-2xl border border-white/60 bg-white/50 backdrop-blur-xl p-4 mb-5 flex items-center gap-2 overflow-x-auto">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring}
+            className="rounded-2xl border border-white/60 bg-white/50 backdrop-blur-xl p-4 mb-5 flex items-center gap-2 overflow-x-auto shadow-lg">
             {stages.map((s, i) => {
                 const active = seen.has(s) || done;
                 return (
@@ -218,7 +215,7 @@ function Pipeline({ events, status }) {
 
 function Card({ title, children }) {
     return (
-        <motion.div variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: spring } }}
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: spring } }}
             className="rounded-3xl border border-white/60 bg-white/55 backdrop-blur-xl p-5 shadow-[0_15px_40px_-20px_rgba(200,100,180,0.3)]">
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-3">{title}</div>
             {children}
