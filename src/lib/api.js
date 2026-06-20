@@ -92,3 +92,16 @@ export async function getGraph() {
 export function getWebSocketUrl(incidentId) {
     return `ws://localhost:5000/ws/incidents/${incidentId}`;
 }
+export async function forgotPassword(email) {
+    return request("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email })
+    });
+}
+
+export async function resetPassword(token, password) {
+    return request("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, password })
+    });
+}
