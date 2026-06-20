@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { getGraph } from "@/lib/api";
 import dagre from "dagre";
 import {
@@ -10,6 +11,8 @@ import {
     Panel, ReactFlowProvider, useReactFlow, BaseEdge, getBezierPath, EdgeLabelRenderer,
 } from "@xyflow/react";
 import { AlertTriangle, ShieldAlert, Cpu, Focus, Zap } from "lucide-react";
+
+const spring = { type: "spring", stiffness: 300, damping: 24 };
 
 const getLayoutedElements = (nodes, edges, direction = "LR") => {
     const g = new dagre.graphlib.Graph();
@@ -38,7 +41,7 @@ function CascadeEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
             <EdgeLabelRenderer>
                 <div
                     style={{ position: "absolute", transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - 14}px)` }}
-                    className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-50 border border-purple-100 text-purple-500 pointer-events-none">
+                    className="font-mono text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100/70 border border-purple-200 text-purple-500 pointer-events-none backdrop-blur-sm">
                     ×{data.count} cascades
                 </div>
             </EdgeLabelRenderer>
@@ -49,24 +52,21 @@ function CascadeEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
 function ComponentNode({ data }) {
     const { name, incidentCount, role, selected, failState } = data;
     const styles = {
-        root: { ring: "ring-rose-300", text: "text-rose-500", iconBg: "bg-rose-50", Icon: ShieldAlert },
-        victim: { ring: "ring-purple-200", text: "text-purple-500", iconBg: "bg-purple-50", Icon: AlertTriangle },
-        stable: { ring: "ring-slate-200", text: "text-slate-400", iconBg: "bg-slate-50", Icon: Cpu },
+        root: { ring: "ring-rose-300", text: "text-rose-500", iconBg: "bg-rose-100/70", Icon: ShieldAlert },
+        victim: { ring: "ring-purple-200", text: "text-purple-500", iconBg: "bg-purple-100/70", Icon: AlertTriangle },
+        stable: { ring: "ring-slate-200", text: "text-slate-400", iconBg: "bg-slate-100/70", Icon: Cpu },
     };
     const s = styles[role] || styles.stable;
     const Icon = s.Icon;
-
-    // failState: null | "down"
     const down = failState === "down";
 
     return (
-        <div className={`relative rounded-2xl backdrop-blur-xl border transition-all duration-500
-            ${down ? "bg-rose-50 border-rose-300 ring-2 ring-rose-400 scale-110 shadow-[0_0_40px_-4px_rgba(244,63,94,0.5)]" : `bg-white/90 border-white ring-2 ${s.ring} shadow-xl`}
+        <div className={`relative rounded-3xl backdrop-blur-xl border transition-all duration-500
+            ${down ? "bg-rose-50/90 border-rose-300 ring-2 ring-rose-400 scale-110 shadow-[0_0_50px_-4px_rgba(244,63,94,0.55)]" : `bg-white/70 border-white/70 ring-2 ${s.ring} shadow-[0_15px_45px_-15px_rgba(200,100,180,0.4)]`}
             p-4 min-w-[220px] ${selected ? "scale-105 z-50 shadow-2xl" : ""}`}>
 
-            {/* halo for root */}
             {role === "root" && !down && (
-                <div className="absolute -inset-3 rounded-3xl bg-rose-300/20 blur-xl -z-10 animate-pulse" />
+                <div className="absolute -inset-3 rounded-[28px] bg-rose-300/25 blur-xl -z-10 animate-pulse" />
             )}
 
             <Handle type="target" position={Position.Left} className="!bg-slate-300 !w-2 !h-5 !rounded-sm !border-0 -ml-1" />
@@ -74,11 +74,11 @@ function ComponentNode({ data }) {
 
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${down ? "bg-rose-100 text-rose-600" : `${s.iconBg} ${s.text}`}`}>
+                    <div className={`p-2 rounded-xl ${down ? "bg-rose-100 text-rose-600" : `${s.iconBg} ${s.text}`}`}>
                         <Icon size={16} strokeWidth={2} />
                     </div>
                     <div>
-                        <div className="text-[14px] font-medium text-slate-700 tracking-tight">{name}</div>
+                        <div className="text-[14px] font-semibold text-slate-700 tracking-tight">{name}</div>
                         <div className={`font-mono text-[9px] uppercase tracking-widest mt-0.5 ${down ? "text-rose-500" : "text-slate-400"}`}>
                             {down ? "● failing" : role}
                         </div>
@@ -91,9 +91,9 @@ function ComponentNode({ data }) {
                     </span>
                 )}
             </div>
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between pt-3 border-t border-white/60">
                 <span className="font-mono text-[10px] text-slate-400 uppercase">incidents</span>
-                <span className="font-mono text-sm font-medium text-slate-600 tabular-nums">{incidentCount}</span>
+                <span className="font-mono text-sm font-semibold text-slate-600 tabular-nums">{incidentCount}</span>
             </div>
         </div>
     );
@@ -114,8 +114,11 @@ function TopologyCanvas() {
     const timers = useRef([]);
 
     useEffect(() => {
-        getGraph().then((g) => { setGraph(g); setLoading(false); }).catch(() => setLoading(false));
-        return () => timers.current.forEach(clearTimeout);
+        let alive = true;
+        getGraph()
+            .then((g) => { if (alive) { setGraph(g); setLoading(false); } })
+            .catch((err) => { if (alive) { console.error("[topology] graph fetch failed:", err); setLoading(false); } });
+        return () => { alive = false; timers.current.forEach(clearTimeout); };
     }, []);
 
     useEffect(() => {
@@ -154,35 +157,25 @@ function TopologyCanvas() {
             const connected = selectedNodeId ? (e.source === selectedNodeId || e.target === selectedNodeId) : true;
             return { ...e, style: { ...e.style, opacity: connected ? 0.95 : 0.1 } };
         }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedNodeId, edges.length, simulating]);
 
-    // ---- SIMULATE FAILURE: cascade propagation ----
     const runSimulation = useCallback(() => {
         if (simulating) return;
         const rootNode = nodes.find(n => n.data?.role === "root");
         if (!rootNode) return;
-
         setSimulating(true);
         setSelectedNodeId(null);
         timers.current.forEach(clearTimeout);
         timers.current = [];
-
-        // reset all
         setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, failState: null } })));
         setEdges(eds => eds.map(e => ({ ...e, data: { ...e.data, firing: false } })));
-
-        // order victims by edge weight from root (heaviest cascades first)
         const rootEdges = edges.filter(e => e.source === rootNode.id).sort((a, b) => b.data.count - a.data.count);
-
-        // step 0: root goes down
         const t0 = setTimeout(() => {
             setNodes(nds => nds.map(n => n.id === rootNode.id ? { ...n, data: { ...n.data, failState: "down" } } : n));
             setBlastCaption(`${rootNode.data.name} failing — predicting blast radius…`);
         }, 200);
         timers.current.push(t0);
-
-        // each victim fails in sequence
         rootEdges.forEach((edge, i) => {
             const delay = 1100 + i * 1100;
             const t = setTimeout(() => {
@@ -193,8 +186,6 @@ function TopologyCanvas() {
             }, delay);
             timers.current.push(t);
         });
-
-        // finish
         const totalTime = 1100 + rootEdges.length * 1100 + 800;
         const tEnd = setTimeout(() => {
             const secs = Math.round((rootEdges.length * 1.1 + 1));
@@ -217,51 +208,72 @@ function TopologyCanvas() {
     const victimCount = nodes.filter(n => n.data?.role === "victim").length;
     const totalCascades = (graph?.edges ?? []).reduce((s, e) => s + e.occurrenceCount, 0);
 
-    if (loading) return <div className="flex-1 flex items-center justify-center text-slate-400 font-mono">loading topology…</div>;
+    if (loading) {
+        return <div className="flex-1 flex items-center justify-center text-slate-400 font-mono">loading topology…</div>;
+    }
+
+    if (!graph?.nodes?.length) {
+        return (
+            <div className="flex-1 flex items-center justify-center relative z-10">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={spring}
+                    className="text-center rounded-3xl bg-white/50 backdrop-blur-xl border border-white/60 shadow-[0_25px_60px_-25px_rgba(200,100,180,0.4)] p-12 max-w-md">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-rose-200 to-purple-200 flex items-center justify-center mx-auto mb-4 text-2xl">◈</div>
+                    <h2 className="text-xl font-semibold text-slate-800 mb-2">No topology yet</h2>
+                    <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+                        Forge builds your system's failure map from analyzed incidents. Create and analyze a few incidents, and the cascade relationships between your components will appear here.
+                    </p>
+                    <span className="font-mono text-[11px] text-slate-300">your causal graph is empty</span>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 flex flex-col min-w-0 relative z-10">
-            <header className="h-16 shrink-0 border-b border-[#f3eef3] bg-white/80 backdrop-blur-md flex items-center justify-between px-8">
-                <span className="font-mono text-[11px] text-slate-400 uppercase tracking-[0.15em]">System Topology</span>
+            <motion.header initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={spring}
+                className="h-16 shrink-0 border-b border-white/40 bg-white/40 backdrop-blur-xl flex items-center justify-between px-8">
+                <span className="font-mono text-[11px] text-slate-500 uppercase tracking-[0.2em]">System Topology</span>
                 <div className="flex items-center gap-3">
                     <span className="font-mono text-[11px] text-slate-400">{graph?.nodeCount ?? "—"} components · {graph?.edgeCount ?? "—"} cascade paths</span>
                     {!simulating ? (
-                        <button onClick={runSimulation}
-                            className="flex items-center gap-1.5 font-mono text-[11px] bg-gradient-to-r from-rose-400 to-purple-400 text-white px-3 py-1.5 rounded-lg hover:from-rose-500 hover:to-purple-500 transition shadow-sm">
+                        <motion.button whileHover={{ scale: 1.05, y: -1 }} whileTap={{ scale: 0.95 }} transition={spring} onClick={runSimulation}
+                            className="flex items-center gap-1.5 font-mono text-[11px] bg-gradient-to-r from-rose-400 to-purple-400 text-white px-3.5 py-1.5 rounded-xl shadow-lg shadow-fuchsia-300/40">
                             <Zap size={13} /> simulate failure
-                        </button>
+                        </motion.button>
                     ) : (
-                        <button onClick={resetSim}
-                            className="font-mono text-[11px] bg-white border border-[#f3eef3] text-slate-500 px-3 py-1.5 rounded-lg hover:text-slate-700 transition">
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={spring} onClick={resetSim}
+                            className="font-mono text-[11px] bg-white/70 border border-white/70 text-slate-500 px-3.5 py-1.5 rounded-xl hover:text-slate-700 transition-colors">
                             reset
-                        </button>
+                        </motion.button>
                     )}
-                    <button onClick={() => fitView({ padding: 0.25, duration: 800 })} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-md transition" title="Reset view">
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fitView({ padding: 0.25, duration: 800 })} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-white/50 rounded-lg transition-colors" title="Reset view">
                         <Focus size={16} />
-                    </button>
+                    </motion.button>
                 </div>
-            </header>
+            </motion.header>
 
-            <main className="flex-1 relative">
-                {/* STORY BANNER / BLAST CAPTION */}
+            <main className="flex-1 relative" style={{ height: "calc(100vh - 64px)" }}>
                 {(rootNode || blastCaption) && (
-                    <div className={`absolute top-5 left-1/2 -translate-x-1/2 z-10 rounded-2xl backdrop-blur-xl border shadow-lg px-6 py-3 transition-all duration-300
-                        ${blastCaption ? "bg-rose-50/90 border-rose-200" : "bg-white/85 border-rose-100/70"}`}>
+                    <motion.div
+                        key={blastCaption ? "blast" : "story"}
+                        initial={{ opacity: 0, y: -10, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={spring}
+                        className={`absolute top-5 left-1/2 -translate-x-1/2 z-10 rounded-2xl backdrop-blur-xl border shadow-lg px-6 py-3
+                            ${blastCaption ? "bg-rose-50/85 border-rose-200" : "bg-white/55 border-white/60"}`}>
                         {blastCaption ? (
                             <span className="font-mono text-[13px] text-rose-600">{blastCaption}</span>
                         ) : (
                             <div className="flex items-center gap-5">
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-2xl font-light text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-purple-500">{rootNode.name}</span>
+                                    <span className="text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-purple-500">{rootNode.name}</span>
                                     <span className="font-mono text-[11px] text-slate-400">is your single point of failure</span>
                                 </div>
-                                <div className="h-6 w-px bg-[#f3eef3]" />
+                                <div className="h-6 w-px bg-white/60" />
                                 <div className="font-mono text-[12px] text-slate-500">
                                     1 root → <span className="text-rose-500 font-medium">{victimCount} services</span> · <span className="text-purple-500 font-medium">{totalCascades}</span> total cascades
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </motion.div>
                 )}
 
                 <ReactFlow
@@ -272,33 +284,34 @@ function TopologyCanvas() {
                     nodeTypes={nodeTypes} edgeTypes={edgeTypes}
                     minZoom={0.2} maxZoom={1.5}
                     proOptions={{ hideAttribution: true }}
-                    className="bg-[#fdfcfd]"
+                    className="bg-transparent"
                 >
                     <Background color="#e9d5ff" gap={22} size={1.5} />
-                    <Controls className="!bg-white !border !border-[#f3eef3] !rounded-lg !shadow-sm" />
+                    <Controls className="!bg-white/70 !border !border-white/70 !rounded-xl !shadow-lg !backdrop-blur-xl" />
 
                     {selectedNodeData && !simulating && (
                         <Panel position="top-right" className="!m-6">
-                            <div className="w-72 rounded-2xl bg-white/95 backdrop-blur-xl border border-[#f3eef3] shadow-xl p-6">
+                            <motion.div initial={{ opacity: 0, x: 20, scale: 0.96 }} animate={{ opacity: 1, x: 0, scale: 1 }} transition={spring}
+                                className="w-72 rounded-3xl bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_25px_60px_-25px_rgba(200,100,180,0.4)] p-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">node inspector</span>
                                     <button onClick={() => setSelectedNodeId(null)} className="text-slate-300 hover:text-slate-500">✕</button>
                                 </div>
-                                <h2 className="text-xl font-light text-slate-800">{selectedNodeData.name}</h2>
+                                <h2 className="text-xl font-semibold text-slate-800">{selectedNodeData.name}</h2>
                                 <div className="font-mono text-[11px] text-slate-400 uppercase tracking-widest mt-1">{selectedNodeData.role} node</div>
-                                <div className="mt-5 pt-5 border-t border-[#f3eef3]">
+                                <div className="mt-5 pt-5 border-t border-white/60">
                                     <div className="text-[10px] font-mono text-slate-400 mb-2 uppercase tracking-wider">total impact</div>
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-4xl font-light tabular-nums text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-purple-500">{selectedNodeData.incidentCount}</span>
+                                        <span className="text-4xl font-bold tabular-nums text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-purple-500">{selectedNodeData.incidentCount}</span>
                                         <span className="font-mono text-[10px] text-slate-400">incidents involved</span>
                                     </div>
                                 </div>
                                 {selectedNodeData.role === "root" && (
-                                    <div className="mt-4 rounded-lg bg-rose-50/60 border border-rose-100 px-3 py-2 font-mono text-[11px] text-rose-500 leading-relaxed">
-                                        ⚠ weakest link — try “simulate failure” to see its blast radius
+                                    <div className="mt-4 rounded-xl bg-rose-50/70 border border-rose-100 px-3 py-2 font-mono text-[11px] text-rose-500 leading-relaxed">
+                                        ⚠ weakest link — try "simulate failure" to see its blast radius
                                     </div>
                                 )}
-                            </div>
+                            </motion.div>
                         </Panel>
                     )}
                 </ReactFlow>
@@ -310,29 +323,37 @@ function TopologyCanvas() {
 export default function TopologyPage() {
     const router = useRouter();
     return (
-        <div className="h-screen w-screen bg-[#fdfcfd] text-[#3a3a44] flex relative overflow-hidden selection:bg-rose-100">
-            <div className="absolute top-[-20%] left-[-10%] h-[700px] w-[700px] rounded-full bg-rose-100/30 blur-[150px] pointer-events-none" />
-            <div className="absolute bottom-[-20%] right-[-10%] h-[600px] w-[600px] rounded-full bg-purple-100/20 blur-[150px] pointer-events-none" />
-            <aside className="w-60 shrink-0 bg-[#fbf9fb] border-r border-[#f3eef3] flex flex-col relative z-20">
-                <div className="px-5 py-5 border-b border-[#f3eef3] flex items-center gap-2.5 cursor-pointer" onClick={() => router.push("/")}>
-                    <div className="h-7 w-7 rounded-md bg-gradient-to-br from-rose-300 via-fuchsia-300 to-purple-300 flex items-center justify-center text-white font-bold text-sm shadow-sm">F</div>
-                    <span className="text-base font-medium tracking-tight text-slate-700">Forge</span>
+        <div className="h-screen w-screen bg-[#f4f1f6] text-[#2a2730] flex relative overflow-hidden selection:bg-rose-200/60">
+            <div className="absolute top-[-20%] left-[-10%] h-[700px] w-[700px] rounded-full bg-rose-300/30 blur-[170px] pointer-events-none" />
+            <div className="absolute bottom-[-20%] right-[-10%] h-[600px] w-[600px] rounded-full bg-purple-300/25 blur-[170px] pointer-events-none" />
+
+            <motion.aside initial={{ x: -60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={spring}
+                className="w-60 shrink-0 bg-white/50 backdrop-blur-xl border-r border-white/50 flex flex-col relative z-20">
+                <div className="px-5 py-5 flex items-center gap-2.5 cursor-pointer" onClick={() => router.push("/")}>
+                    <motion.div whileHover={{ scale: 1.12, rotate: 8 }} transition={spring}
+                        className="h-8 w-8 rounded-xl bg-gradient-to-br from-rose-300 via-fuchsia-300 to-purple-300 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-fuchsia-300/40">F</motion.div>
+                    <span className="text-base font-semibold tracking-tight text-slate-700">Forge</span>
                 </div>
-                <nav className="flex-1 px-3 py-4 space-y-1">
-                    <SideLink label="Overview" onClick={() => router.push("/")} />
-                    <SideLink label="Topology" active />
+                <nav className="flex-1 px-3 py-4 space-y-1.5">
+                    <SideLink icon="◆" label="Overview" onClick={() => router.push("/")} />
+                    <SideLink icon="▤" label="Incidents" onClick={() => router.push("/incidents")} />
+                    <SideLink icon="◈" label="Topology" active />
+                    <SideLink icon="▰" label="Runbooks" onClick={() => router.push("/runbooks")} />
+                    <SideLink icon="◷" label="History" soon />
                 </nav>
-            </aside>
+            </motion.aside>
             <ReactFlowProvider><TopologyCanvas /></ReactFlowProvider>
         </div>
     );
 }
 
-function SideLink({ label, active, onClick }) {
+function SideLink({ icon, label, active, onClick, soon }) {
     return (
-        <div onClick={onClick}
-            className={`flex items-center gap-3 px-3 py-2 rounded-md font-mono text-[13px] cursor-pointer transition-colors ${active ? "bg-rose-50/80 text-purple-600 font-medium" : "text-slate-400 hover:bg-rose-50/40 hover:text-slate-600"}`}>
-            {label}
-        </div>
+        <motion.div whileHover={soon ? {} : { x: 5, scale: 1.02 }} whileTap={soon ? {} : { scale: 0.97 }} transition={spring}
+            onClick={soon ? undefined : onClick}
+            className={`flex items-center gap-3 px-3 py-2 rounded-xl font-mono text-[13px] ${soon ? "text-slate-300 cursor-default" : "cursor-pointer"} ${active ? "bg-white/70 text-purple-600 font-medium shadow-md shadow-purple-200/30" : !soon ? "text-slate-400 hover:bg-white/50 hover:text-slate-600" : ""}`}>
+            <span className="text-[11px] w-4">{icon}</span><span>{label}</span>
+            {soon && <span className="ml-auto font-mono text-[8px] uppercase tracking-wider text-slate-300 bg-white/60 px-1.5 py-0.5 rounded-full">soon</span>}
+        </motion.div>
     );
 }
